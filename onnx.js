@@ -257,6 +257,7 @@ onnx.Graph = class {
         this._nodes = [];
         this._inputs = [];
         this._outputs = [];
+        this._operators = [];
         this._imageFormat = imageFormat;
 
         if (graph) {
@@ -321,6 +322,7 @@ onnx.Graph = class {
                 this._outputs.push(new onnx.Argument(valueInfo.name, [ connection ]));
             }
             for (node of nodes) {
+                this._operators[node.op_type] = (this._operators[node.op_type] || 0) + 1; 
                 var inputs = [];
                 var schema = metadata.getSchema(node.op_type);
                 if (node.input && node.input.length > 0) {
@@ -398,6 +400,10 @@ onnx.Graph = class {
 
     get nodes() {
         return this._nodes;
+    }
+
+    get operators() {
+        return this._operators;
     }
 
     toString() {

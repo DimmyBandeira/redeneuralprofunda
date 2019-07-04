@@ -98,6 +98,7 @@ tflite.Graph = class {
         this._nodes = [];
         this._inputs = [];
         this._outputs = [];
+        this._operators = [];
         var connections = [];
         var names = [];
         for (var i = 0; i < graph.tensorsLength(); i++) {
@@ -116,6 +117,7 @@ tflite.Graph = class {
             var operatorName = (opcodeIndex < operatorCodeList.length) ? operatorCodeList[opcodeIndex] : ('(' + opcodeIndex.toString() + ')');
             var node = new tflite.Node(metadata, operator, operatorName, j.toString(), connections);
             this._nodes.push(node);
+            this._operators[operatorName] = (this._operators[operatorName] || 0) + 1;
         }
         for (var k = 0; k < graph.inputsLength(); k++) {
             var inputIndex = graph.inputs(k);
@@ -145,6 +147,10 @@ tflite.Graph = class {
 
     get nodes() {
         return this._nodes;
+    }
+
+    get operators() {
+        return this._operators;
     }
 };
 
