@@ -222,17 +222,16 @@ function buildNode(node, operands, builder) {
 
   function buildOnnxNode() {
     function buildPadding(input_shape, kernel_shape, strides, auto_pad) {
-      let padding;
-      if (auto_pad === 'VALID') {
-        padding = [0, 0, 0, 0];
+      if (typeof auto_pad === 'undefined' || auto_pad === 'NOTSET') {
+        return toIntegerArray(getValueOfAttribute('pads'));
+      }
+      else if (auto_pad === 'VALID') {
+        return [0, 0, 0, 0];
       } else if (auto_pad === 'SAME_UPPER' || auto_pad === 'SAME_LOWER') {
         const pad_x = computePad(input_shape[2], strides[0], kernel_shape[0], auto_pad);
         const pad_y = computePad(input_shape[3], strides[1], kernel_shape[1], auto_pad);
-        padding = [pad_x.head, pad_x.tail, pad_y.head, pad_y.tail];
-      } else if (auto_pad === 'NOTSET') {
-        padding = toIntegerArray(getValueOfAttribute('pads'));
+        return [pad_x.head, pad_x.tail, pad_y.head, pad_y.tail];
       }
-      return padding;
     }
     const handlers = {
       MatMul: () => {
