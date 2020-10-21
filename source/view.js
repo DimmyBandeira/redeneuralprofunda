@@ -15,6 +15,8 @@ var dagre = dagre || require('dagre');
 var sidebar = sidebar || require('./view-sidebar');
 var grapher = grapher || require('./view-grapher');
 
+var webnn = webnn || require('./webnn');
+
 view.View = class {
 
     constructor(host, id) {
@@ -22,6 +24,7 @@ view.View = class {
         this._id = id ? ('-' + id) : '';
         this._host.initialize(this).then(() => {
             this._model = null;
+            this._compiledModel = null;
             this._selection = [];
             this._sidebar = new sidebar.Sidebar(this._host, id);
             this._showAttributes = false;
@@ -388,6 +391,10 @@ view.View = class {
             return this.renderGraph(model, graph).then(() => {
                 this._model = model;
                 this._activeGraph = graph;
+                webnn.compile(graph).then((exe) => {
+                    this._compiledModel = exe;
+                    console.log(exe);
+                });
                 this.show('default');
                 return this._model;
             }).catch((error) => {
