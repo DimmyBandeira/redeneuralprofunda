@@ -1,3 +1,8 @@
+/* eslint indent: ["error", 2] */
+/* eslint brace-style: "error" */
+/* global onnx, tflite */
+
+var base = base || require('./base');
 var webnn = webnn || {};
 const nn = navigator.ml.getNeuralNetworkContext();
 
@@ -29,7 +34,7 @@ webnn.compile = async (graph) => {
     buildNode(node, operands, builder);
   }
 
-  let outputs = {};
+  const outputs = {};
   for (const output of graph.outputs) {
     console.log(output);
     for (const argument of output.arguments) {
@@ -38,14 +43,14 @@ webnn.compile = async (graph) => {
   }
   const model = builder.createModel(outputs);
   return await model.compile();
-}
+};
 
 function buildNode(node, operands, builder) {
   function createArrayBufferView(initializer) {
     if (initializer.type.dataType === 'float32') {
       return new Float32Array(initializer.value.flat(initializer.type.shape.dimensions.length));
     } else {
-      throw new Error(`${dataType} is not supported.`);
+      throw new Error(`${initializer.type.dataType} is not supported.`);
     }
   }
 
@@ -93,7 +98,7 @@ function buildNode(node, operands, builder) {
   function addOperandForOutput(operand) {
     const name = node.outputs[0].arguments[0].name;
     if (operands.has(name))
-      throw new Error(`${name} is duplicate.`)
+      throw new Error(`${name} is duplicate.`);
     operands.set(name, operand);
   }
 
@@ -109,15 +114,15 @@ function buildNode(node, operands, builder) {
   function computePad(in_dim, stride, kernel, pad_type) {
     const legacy_target_size = (in_dim + stride - 1) / stride;
     const pad_needed = (legacy_target_size - 1) * stride + kernel - in_dim;
-  
-    let head, tail;
+
+    let head;
     if (pad_type === 'SAME_LOWER') {
       head = (pad_needed + 1) / 2;
     } else {
       head = pad_needed / 2;
     }
-  
-    tail = pad_needed - head;
+
+    const tail = pad_needed - head;
     return {head, tail};
   }
 
@@ -224,8 +229,7 @@ function buildNode(node, operands, builder) {
     function buildPadding(input_shape, kernel_shape, strides, auto_pad) {
       if (typeof auto_pad === 'undefined' || auto_pad === 'NOTSET') {
         return toIntegerArray(getValueOfAttribute('pads'));
-      }
-      else if (auto_pad === 'VALID') {
+      } else if (auto_pad === 'VALID') {
         return [0, 0, 0, 0];
       } else if (auto_pad === 'SAME_UPPER' || auto_pad === 'SAME_LOWER') {
         const pad_x = computePad(input_shape[2], strides[0], kernel_shape[0], auto_pad);
@@ -263,7 +267,7 @@ function buildNode(node, operands, builder) {
         const x = getOrCreateOperandForInput('X');
         const x_shape = toIntegerArray(getInputByName('X').type.shape.dimensions);
         const w = getOrCreateOperandForInput('W');
-        const b = getOrCreateOperandForInput('B');;
+        const b = getOrCreateOperandForInput('B');
         const kernel_shape = toIntegerArray(getValueOfAttribute('kernel_shape'));
         const strides = toIntegerArray(getValueOfAttribute('strides'));
         const dilations = toIntegerArray(getValueOfAttribute('dilations'));
