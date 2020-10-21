@@ -394,6 +394,9 @@ view.View = class {
                 webnn.compile(graph).then((exe) => {
                     this._compiledModel = exe;
                     console.log(exe);
+                }).catch((err) => {
+                    console.log(`Fail to compile model in ${model.format}`);
+                    throw err;
                 });
                 this.show('default');
                 return this._model;
