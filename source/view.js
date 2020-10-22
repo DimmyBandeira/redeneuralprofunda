@@ -74,6 +74,118 @@ view.View = class {
         });
     }
 
+    compile() {
+        const start = performance.now();
+        webnn.compile(this._activeGraph).then((exe) => {
+            const compilationTime = performance.now() - start;
+            console.log(`Compilation takes ${compilationTime.toFixed(2)} ms.`);
+            this._compiledModel = exe;
+            console.log(exe);
+        }).catch((err) => {
+            console.log('Fail to compile the graph.');
+            throw err;
+        });
+    }
+
+    _setInitializers(buffers, parameters) {
+        class InitializerWrapper {
+            constructor(shape, buffer) {
+                this.value = this._toNestedArray(shape, buffer);
+            }
+
+            _createNestedArray(offset, shape, a) {
+                const ret = new Array();
+                if (shape.length === 1) {
+                    const d = shape[0];
+                    for (let i = 0; i < d; i++) {
+                        ret[i] = a[offset + i];
+                    }
+                }
+                else {
+                    const d = shape[0];
+                    const rest = shape.slice(1);
+                    const len = rest.reduce((acc, c) => acc * c);
+                    for (let i = 0; i < d; i++) {
+                        ret[i] = this._createNestedArray(offset + i * len, rest, a);
+                    }
+                }
+                return ret;
+            }
+
+            _toNestedArray(shape, a) {
+                if (shape.length === 0) {
+                    // Scalar type should return a single number.
+                    return a[0];
+                }
+                const size = shape.reduce((acc, c) => acc * c);
+                if (size === 0) {
+                    // A tensor with shape zero should be turned into empty list.
+                    return [];
+                }
+                if (size !== a.length) {
+                    throw new Error(`[${shape}] does not match the input size ${a.length}.`);
+                }
+                return this._createNestedArray(0, shape, a);
+            }
+
+            _stringify(value, indentation, indent) {
+                if (Array.isArray(value)) {
+                    const result = [];
+                    result.push(indentation + '[');
+                    const items = value.map((item) => this._stringify(item, indentation + indent, indent));
+                    if (items.length > 0) {
+                        result.push(items.join(',\n'));
+                    }
+                    result.push(indentation + ']');
+                    return result.join('\n');
+                }
+                if (typeof value == 'string') {
+                    return indentation + value;
+                }
+                if (value == Infinity) {
+                    return indentation + 'Infinity';
+                }
+                if (value == -Infinity) {
+                    return indentation + '-Infinity';
+                }
+                if (isNaN(value)) {
+                    return indentation + 'NaN';
+                }
+                return indentation + value.toString();
+            }
+
+            toString () {
+                return this._stringify(this.value, '', '    ');
+            }
+        }
+
+        for (const name of Object.keys(buffers)) {
+            for (const p of parameters) {
+                if (name === p.name) {
+                    const a = p.arguments[0];
+                    const shape = JSON.parse(a.type.shape.toString());
+                    a._initializer = new InitializerWrapper(shape, buffers[name].buffer);
+                }
+            }
+        }
+    }
+
+    compute(inputs) {
+        const start = performance.now();
+        this._compiledModel.compute(inputs).then((outputs) => {
+            const computeTime = performance.now() - start;
+            console.log(`Compute takes ${computeTime.toFixed(2)} ms.`);
+            console.log(inputs);
+            this._setInitializers(inputs, this._activeGraph.inputs);
+            console.log(outputs);
+            this._setInitializers(outputs, this._activeGraph.outputs);
+            this.showModelProperties();
+        }).catch((err) => {
+            console.log('Fail to compute the graph');
+            throw err;
+        });
+    }
+
     show(page) {
         if (!page) {
             page = (!this._model && !this._activeGraph) ? 'welcome' : 'default';
@@ -391,13 +503,6 @@ view.View = class {
             return this.renderGraph(model, graph).then(() => {
                 this._model = model;
                 this._activeGraph = graph;
-                webnn.compile(graph).then((exe) => {
-                    this._compiledModel = exe;
-                    console.log(exe);
-                }).catch((err) => {
-                    console.log(`Fail to compile model in ${model.format}`);
-                    throw err;
-                });
                 this.show('default');
                 return this._model;
             }).catch((error) => {
